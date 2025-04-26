@@ -108,7 +108,6 @@ data JsonValue
     | JsonNumber Double
     | JsonString String
     | JsonArray [JsonValue]
-    -- | JsonObject [(String, JsonValue)]
     deriving (Show, Eq)
 
 parseJsonValue :: Parser JsonValue
@@ -186,3 +185,13 @@ parseJsonArray = do
     _     <- parseChar ']'
     pure (JsonArray vals)
 
+-- pour un objet
+
+-- step4
+printJson :: JsonValue -> String
+printJson JsonNull = "null"
+printJson (JsonBool True) = "true"
+printJson (JsonBool False) = "false"
+printJson (JsonNumber n) = show n
+printJson (JsonString s) = show s
+printJson (JsonArray xs) = "[" ++ intercalate "," (map printJson xs) ++ "]"
