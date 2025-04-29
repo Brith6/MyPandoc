@@ -4,6 +4,9 @@
 -- File description:
 -- pandoc
 -}
+
+import Data.List (intercalate)
+import Data.Maybe (fromMaybe)
 import Data.Traversable (traverse)
 import Control.Applicative
 import Control.Monad (fail)
@@ -23,6 +26,7 @@ instance Functor Parser where
 
 instance Applicative Parser where
     pure x = Parser $ \input -> Just (x, input)
+
     (Parser pf) <*> (Parser px) = Parser $ \input ->
         case pf input of
             Just (f, rest) -> case px rest of
@@ -32,6 +36,7 @@ instance Applicative Parser where
 
 instance Alternative Parser where
     empty = Parser $ const Nothing
+
     (Parser p1) <|> (Parser p2) = Parser $ \input ->
         case p1 input of
             Just res -> Just res
@@ -39,6 +44,7 @@ instance Alternative Parser where
 
 instance Monad Parser where
     return = pure
+
     (Parser p) >>= f = Parser $ \input ->
         case p input of
             Just (x, rest) -> runParser (f x) rest
@@ -73,12 +79,12 @@ parseAndWith f p1 p2 = Parser $ \input ->
         Nothing -> Nothing
 
 parseMany :: Parser a -> Parser [a]
-parseMany (Parser a1) = Parser $ \(x:xs) ->
-            case (a1 (x:xs)) of
-                Just (e, f) -> case runParser (parseMany (Parser a1)) f of
-                    Just (es, res) -> Just (e : es, res)
-                    Nothing -> Just ([e], f)
-                Nothing -> Just ([], x:xs)
+parseMany (Parser a1) = Parser $ \input ->
+    case a1 input of
+        Just (e, rest) -> case runParser (parseMany (Parser a1)) rest of
+            Just (es, res) -> Just (e : es, res)
+            Nothing -> Just ([e], rest)
+        Nothing -> Just ([], input)
 
 parseSome :: Parser a -> Parser [a]
 parseSome (Parser a1) = Parser $ \input ->
@@ -108,6 +114,7 @@ data JsonValue
     | JsonNumber Double
     | JsonString String
     | JsonArray [JsonValue]
+    | JsonObject [(String, JsonValue)]
     deriving (Show, Eq)
 
 parseJsonValue :: Parser JsonValue
@@ -116,13 +123,15 @@ parseJsonValue =
     parseJsonBool    <|>
     parseJsonNumber  <|>
     parseJsonString  <|>
-    parseJsonArray
+    parseJsonArray   <|>
+    parseJsonObject
 
 instance MonadFail Parser where
     fail _ = Parser $ const Nothing
 
 string :: String -> Parser String
-string = traverse parseChar
+string [] = pure []
+string (c:cs) = (:) <$> parseChar c <*> string cs
 
 parseSpaces :: Parser String
 parseSpaces = parseMany (parseAnyChar " \t\n\r")
@@ -173,19 +182,43 @@ parseJsonString = JsonString <$> (parseChar '"' *> parseStr <* parseChar '"')
         in Just (content, rest)
 
 -- pour un tableau
-sepBy :: Parser a -> Parser sep -> Parser [a]
-sepBy p sep = (:) <$> p <*> many (sep *> p) <|> pure []
-
 parseJsonArray :: Parser JsonValue
 parseJsonArray = do
-    _     <- parseChar '['
-    _     <- parseSpaces
-    vals  <- sepBy parseJsonValue (parseChar ',')
-    _     <- parseSpaces
-    _     <- parseChar ']'
-    pure (JsonArray vals)
+    _ <- parseChar '['
+    parseSpaces
+    values <- parseArr <|> return []
+    parseSpaces
+    _ <- parseChar ']'
+    return (JsonArray values)
+  where
+    parseArr = do
+        first <- parseJsonValue
+        parseSpaces
+        rest <- parseMany (parseChar ',' *> parseSpaces *> parseJsonValue <* parseSpaces)
+        return (first : rest)
 
 -- pour un objet
+parseJsonObject :: Parser JsonValue
+parseJsonObject = do
+    _ <- parseChar '{'
+    parseSpaces
+    pairs <- parseVal <|> pure []
+    parseSpaces
+    _ <- parseChar '}'
+    return (JsonObject pairs)
+  where
+    parseVal = do
+        pair <- parsePair
+        _ <- parseSpaces
+        rest <- parseMany (parseChar ',' *> parseSpaces *> parsePair <* parseSpaces)
+        return (pair : rest)    
+    parsePair = do
+        JsonString key <- parseJsonString
+        parseSpaces
+        _ <- parseChar ':'
+        parseSpaces
+        value <- parseJsonValue
+        return (key, value)
 
 -- step4
 printJson :: JsonValue -> String
@@ -195,3 +228,6 @@ printJson (JsonBool False) = "false"
 printJson (JsonNumber n) = show n
 printJson (JsonString s) = show s
 printJson (JsonArray xs) = "[" ++ intercalate "," (map printJson xs) ++ "]"
+printJson (JsonObject ax) = "{" ++ intercalate "," (map printPair ax) ++ "}"
+    where
+        printPair (k, v) = show k ++ ":" ++ printJson v
