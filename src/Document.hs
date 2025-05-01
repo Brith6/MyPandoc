@@ -31,28 +31,29 @@ data Text = Text {
     encapsulator :: Maybe String,
     bold :: Bool,
     italic:: Bool,
+    code :: Bool,
     value :: Maybe String,
     url :: Maybe String
-}deriving (Show)
+} deriving (Show)
 
 data SectionElem = SectionElem {
     _section :: Maybe Section,
     _secpara :: Maybe Paragraph,
     _secblockcode :: Maybe String,
     _seclist :: Maybe Option
-}deriving (Show)
+} deriving (Show)
 
 data Section = Section {
-    _sectitle :: String,
-    content :: [SectionElem]
-}deriving (Show)
-
-data BodyElem = BodyElem {
-    _bdysection :: Maybe Section,
-    _bdypara :: Maybe Paragraph,
-    _bdylist :: Maybe Option,
-    _bdycodeblock :: Maybe String
+    _sectitle :: Maybe String,
+    content :: [BodyElem]
 } deriving (Show)
+
+data BodyElem = BNull
+    | Bdysection Section 
+    | Bdypara [Text] 
+    | Bdylist Option
+    | Bycodeblock String
+    deriving (Show)
 
 data Doc = Doc {
     header::Header,
