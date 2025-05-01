@@ -52,7 +52,7 @@ data BodyElem = BNull
     | Bdysection Section 
     | Bdypara [Text] 
     | Bdylist Option
-    | Bycodeblock String
+    | Bycodeblock [Text]
     deriving (Show)
 
 data Doc = Doc {
