@@ -50,8 +50,8 @@ instance Monad Parser where
             Just (x, rest) -> runParser (f x) rest
             Nothing -> Nothing
 
-parseChar :: Char -> Parser Char
-parseChar c = Parser $ \input ->
+charr :: Char -> Parser Char
+charr c = Parser $ \input ->
     case input of
         (x:xs) | x == c -> Just (c, xs)
         _ -> Nothing
@@ -131,10 +131,10 @@ instance MonadFail Parser where
 
 string :: String -> Parser String
 string [] = pure []
-string (c:cs) = (:) <$> parseChar c <*> string cs
+string (c:cs) = (:) <$> charr c <*> string cs
 
-parseSpaces :: Parser String
-parseSpaces = parseMany (parseAnyChar " \t\n\r")
+space :: Parser String
+space = parseMany (parseAnyChar " \t\n\r")
 
 -- pour "null"
 parseJsonNull :: Parser JsonValue
@@ -160,7 +160,7 @@ parseSign = optional (parseAnyChar "-")
 
 -- pour la partie décimale
 parseDecimal :: Parser (Maybe String)
-parseDecimal = optional (parseChar '.' *> parseUnsignedInt)
+parseDecimal = optional (charr '.' *> parseUnsignedInt)
 
 -- ce qu'on veut finally pour un nombre
 parseJsonNumber :: Parser JsonValue
@@ -175,7 +175,7 @@ parseJsonNumber = do
 
 -- pour une string
 parseJsonString :: Parser JsonValue
-parseJsonString = JsonString <$> (parseChar '"' *> parseStr <* parseChar '"')
+parseJsonString = JsonString <$> (charr '"' *> parseStr <* charr '"')
   where
     parseStr = Parser $ \input ->
         let (content, rest) = span (/= '"') input
@@ -184,41 +184,45 @@ parseJsonString = JsonString <$> (parseChar '"' *> parseStr <* parseChar '"')
 -- pour un tableau
 parseJsonArray :: Parser JsonValue
 parseJsonArray = do
-    _ <- parseChar '['
-    parseSpaces
+    _ <- charr '['
+    space
     values <- parseArr <|> return []
-    parseSpaces
-    _ <- parseChar ']'
+    space
+    _ <- charr ']'
     return (JsonArray values)
-  where
-    parseArr = do
-        first <- parseJsonValue
-        parseSpaces
-        rest <- parseMany (parseChar ',' *> parseSpaces *> parseJsonValue <* parseSpaces)
-        return (first : rest)
+
+parseArr :: Parser [JsonValue]
+parseArr = do
+    first <- parseJsonValue
+    space
+    rest <- parseMany (charr ',' *> space *> parseJsonValue <* space)
+    return (first : rest)
 
 -- pour un objet
 parseJsonObject :: Parser JsonValue
 parseJsonObject = do
-    _ <- parseChar '{'
-    parseSpaces
+    _ <- charr '{'
+    space
     pairs <- parseVal <|> pure []
-    parseSpaces
-    _ <- parseChar '}'
+    space
+    _ <- charr '}'
     return (JsonObject pairs)
-  where
-    parseVal = do
-        pair <- parsePair
-        _ <- parseSpaces
-        rest <- parseMany (parseChar ',' *> parseSpaces *> parsePair <* parseSpaces)
-        return (pair : rest)    
-    parsePair = do
-        JsonString key <- parseJsonString
-        parseSpaces
-        _ <- parseChar ':'
-        parseSpaces
-        value <- parseJsonValue
-        return (key, value)
+
+parseVal :: Parser [(String, JsonValue)]
+parseVal = do
+    pair <- parsePair
+    _ <- space
+    rest <- parseMany (charr ',' *> space *> parsePair <* space)
+    return (pair : rest)
+
+parsePair :: Parser (String, JsonValue)
+parsePair = do
+    JsonString key <- parseJsonString
+    space
+    _ <- charr ':'
+    space
+    value <- parseJsonValue
+    return (key, value)
 
 -- step4
 printJson :: JsonValue -> String
