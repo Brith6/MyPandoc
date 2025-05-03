@@ -67,8 +67,8 @@ formatSectionXml n (Section title content) =
 formatTextXml :: Text -> String
 formatTextXml (Text _ _ _ _ (Just txt) (Just url)) =
     "<link url=\"" ++ url ++ "\">" ++ txt ++ "</link>"
-formatTextXml (Text _ _ _ _ Nothing (Just url)) =
-    "<image url=\"" ++ url ++ "\">" ++ "Text to replace image" ++ "</image>"
+formatTextXml (Text _ _ _ _ (Just txt) (Just url)) =
+    "<image url=\"" ++ url ++ "\">" ++ txt ++ "</image>"
 formatTextXml (Text _ True _ _ (Just txt) _) =
     "<bold>" ++ txt ++ "</bold>"
 formatTextXml (Text _ _ True _ (Just txt) _) =
