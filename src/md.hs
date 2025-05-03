@@ -1,3 +1,10 @@
+{-
+-- EPITECH PROJECT, 2025
+-- Piscine
+-- File description:
+-- pandoc
+-}
+
 import Control.Applicative
 import Data.Char (isSpace)
 
@@ -119,10 +126,16 @@ parseParagraph = do
     return (Paragraph paragraph)
 
 parseMarkdown :: Parser [MarkdownElement]
-parseMarkdown = parseMany (parseTitle <|> parseParagraph <|> parseList <|> parseBold <|> parseItalic <|> parseCodeBlock)
+parseMarkdown = parseMany s
+    where
+        d = parseTitle <|> parseParagraph
+        i = parseItalic <|> parseCodeBlock
+        s = ( d <|> parseList <|> parseBold <|> i)
 
 
-main :: IO ()
+{--main :: IO ()
 main = do
     let input = "# Title 1\nThis is a *bold* text.\n* Item 1\n* Item 2\n```haskell\nmain = putStrLn \"Hello, world!\"\n```"
     print $ runParser parseMarkdown input
+
+--}
