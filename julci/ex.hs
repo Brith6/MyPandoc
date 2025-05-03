@@ -1,5 +1,12 @@
 import Control.Applicative
 import Data.Char (isSpace)
+import Data.Maybe (fromMaybe)
+import System.Environment (getArgs)
+import Text.Read (readMaybe)
+import System.Exit (exitWith, ExitCode(ExitFailure))
+import Control.Exception (IOException, try)
+import System.IO (readFile)
+import Control.Monad (fail)
 
 data Parser a = Parser { 
     runParser :: String -> Maybe (a, String)

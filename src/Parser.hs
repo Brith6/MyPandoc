@@ -4,12 +4,10 @@
 -- File description:
 -- pandoc
 -}
+
 module Parser where
-import Data.List (intercalate)
-import Data.Maybe (fromMaybe)
-import Data.Traversable (traverse)
 import Control.Applicative
-import Control.Monad (fail)
+import Data.List (intercalate)
 import Text.Read
 
 -- step 1 & 2
@@ -50,15 +48,17 @@ instance Monad Parser where
             Just (x, rest) -> runParser (f x) rest
             Nothing -> Nothing
 
-parseChar :: Char -> Parser Char
-parseChar c = Parser $ \input ->
+charr :: Char -> Parser Char
+charr c = Parser $ \input ->
     case input of
         (x:xs) | x == c -> Just (c, xs)
         _ -> Nothing
 
 parseAnyChar :: String -> Parser Char
-parseAnyChar a = Parser $ \(x:xs) ->
-            if elem x a then Just (x, xs) else Nothing
+parseAnyChar a = Parser $ \input ->
+    case input of
+        (x:xs) | x `elem` a -> Just (x, xs)
+        _ -> Nothing
 
 parseOr :: Parser a -> Parser a -> Parser a
 parseOr (Parser p1) (Parser p2) = Parser $ \xs ->
@@ -131,10 +131,10 @@ instance MonadFail Parser where
 
 string :: String -> Parser String
 string [] = pure []
-string (c:cs) = (:) <$> parseChar c <*> string cs
+string (c:cs) = (:) <$> charr c <*> string cs
 
-parseSpaces :: Parser String
-parseSpaces = parseMany (parseAnyChar " \t\n\r")
+space :: Parser String
+space = parseMany (parseAnyChar " \t\n\r")
 
 -- pour "null"
 parseJsonNull :: Parser JsonValue
@@ -160,7 +160,7 @@ parseSign = optional (parseAnyChar "-")
 
 -- pour la partie décimale
 parseDecimal :: Parser (Maybe String)
-parseDecimal = optional (parseChar '.' *> parseUnsignedInt)
+parseDecimal = optional (charr '.' *> parseUnsignedInt)
 
 -- ce qu'on veut finally pour un nombre
 parseJsonNumber :: Parser JsonValue
@@ -175,7 +175,7 @@ parseJsonNumber = do
 
 -- pour une string
 parseJsonString :: Parser JsonValue
-parseJsonString = JsonString <$> (parseChar '"' *> parseStr <* parseChar '"')
+parseJsonString = JsonString <$> (charr '"' *> parseStr <* charr '"')
   where
     parseStr = Parser $ \input ->
         let (content, rest) = span (/= '"') input
@@ -184,41 +184,45 @@ parseJsonString = JsonString <$> (parseChar '"' *> parseStr <* parseChar '"')
 -- pour un tableau
 parseJsonArray :: Parser JsonValue
 parseJsonArray = do
-    _ <- parseChar '['
-    parseSpaces
+    _ <- charr '['
+    space
     values <- parseArr <|> return []
-    parseSpaces
-    _ <- parseChar ']'
+    space
+    _ <- charr ']'
     return (JsonArray values)
-  where
-    parseArr = do
-        first <- parseJsonValue
-        parseSpaces
-        rest <- parseMany (parseChar ',' *> parseSpaces *> parseJsonValue <* parseSpaces)
-        return (first : rest)
+
+parseArr :: Parser [JsonValue]
+parseArr = do
+    first <- parseJsonValue
+    space
+    rest <- parseMany (charr ',' *> space *> parseJsonValue <* space)
+    return (first : rest)
 
 -- pour un objet
 parseJsonObject :: Parser JsonValue
 parseJsonObject = do
-    _ <- parseChar '{'
-    parseSpaces
+    _ <- charr '{'
+    space
     pairs <- parseVal <|> pure []
-    parseSpaces
-    _ <- parseChar '}'
+    space
+    _ <- charr '}'
     return (JsonObject pairs)
-  where
-    parseVal = do
-        pair <- parsePair
-        _ <- parseSpaces
-        rest <- parseMany (parseChar ',' *> parseSpaces *> parsePair <* parseSpaces)
-        return (pair : rest)    
-    parsePair = do
-        JsonString key <- parseJsonString
-        parseSpaces
-        _ <- parseChar ':'
-        parseSpaces
-        value <- parseJsonValue
-        return (key, value)
+
+parseVal :: Parser [(String, JsonValue)]
+parseVal = do
+    pair <- parsePair
+    _ <- space
+    rest <- parseMany (charr ',' *> space *> parsePair <* space)
+    return (pair : rest)
+
+parsePair :: Parser (String, JsonValue)
+parsePair = do
+    JsonString key <- parseJsonString
+    space
+    _ <- charr ':'
+    space
+    value <- parseJsonValue
+    return (key, value)
 
 -- step4
 printJson :: JsonValue -> String
@@ -231,3 +235,66 @@ printJson (JsonArray xs) = "[" ++ intercalate "," (map printJson xs) ++ "]"
 printJson (JsonObject ax) = "{" ++ intercalate "," (map printPair ax) ++ "}"
     where
         printPair (k, v) = show k ++ ":" ++ printJson v
+
+
+-- Paser Xml
+
+data Xml
+    = XmlElement String [(String, String)] [Xml]  -- nom, attributs, contenu
+    | XmlText String
+    deriving (Show, Eq)
+
+parseWhile :: (Char -> Bool) -> Parser String
+parseWhile cond = Parser $ \input ->
+    let (token, rest) = span cond input
+    in Just (token, rest)
+
+parseIdentifier :: Parser String
+parseIdentifier = (:) <$> parseAnyChar (['a'..'z'] ++ ['A'..'Z'])
+    <*> parseMany (parseAnyChar identChars)
+  where
+    identChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "-_:."
+
+parseText :: Parser Xml
+parseText = Parser $ \input ->
+    case parseWhile (`notElem` "<") `runParser` input of
+        Just (txt, rest) ->
+            if null txt
+                then Nothing
+                else Just (XmlText txt, rest)
+        Nothing -> Nothing
+
+parseAttr :: Parser (String, String)
+parseAttr = do
+    _ <- space
+    key <- parseIdentifier
+    _ <- space
+    _ <- charr '='
+    _ <- space
+    _ <- charr '"'
+    val <- parseWhile (/= '"')
+    _ <- charr '"'
+    return (key, val)
+
+parseAttrs :: Parser [(String, String)]
+parseAttrs = parseMany parseAttr
+
+parseXmlElement :: Parser Xml
+parseXmlElement = do
+    _ <- charr '<'
+    name <- parseIdentifier
+    attrs <- parseAttrs
+    _ <- space
+    selfClose <- (string "/>" *> pure True) <|> (charr '>' *> pure False)
+    if selfClose then return $ XmlElement name attrs [] else do
+            children <- parseMany parseXmlContent
+            _ <- string "</"
+            _ <- parseIdentifier 
+            _ <- charr '>'
+            return $ XmlElement name attrs children
+
+parseXmlContent :: Parser Xml
+parseXmlContent = parseXmlElement <|> parseText
+
+parseXml :: Parser Xml
+parseXml = space *> parseXmlElement <* space

@@ -39,7 +39,7 @@ data Text = Text {
 data SectionElem = SectionElem {
     _section :: Maybe Section,
     _secpara :: Maybe Paragraph,
-    _secblockcode :: Maybe String,
+    _secblockcode :: Maybe [BodyElem],
     _seclist :: Maybe Option
 } deriving (Show)
 
