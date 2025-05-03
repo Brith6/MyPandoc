@@ -10,8 +10,6 @@ import Control.Applicative
 import Data.List (intercalate)
 import Text.Read
 
--- step 1 & 2
-
 data Parser a = Parser { 
     runParser :: String -> Maybe (a, String)
 }
@@ -279,17 +277,24 @@ parseAttr = do
 parseAttrs :: Parser [(String, String)]
 parseAttrs = parseMany parseAttr
 
-parseXmlElement :: Parser Xml
-parseXmlElement = do
+parseXmlStartTag :: Parser (String, [(String, String)], Bool)
+parseXmlStartTag = do
     _ <- charr '<'
     name <- parseIdentifier
     attrs <- parseAttrs
     _ <- space
-    selfClose <- (string "/>" *> pure True) <|> (charr '>' *> pure False)
-    if selfClose then return $ XmlElement name attrs [] else do
+    baliseIsClose <- (string "/>" *> pure True) <|> (charr '>' *> pure False)
+    return (name, attrs, baliseIsClose)
+
+parseXmlElement :: Parser Xml
+parseXmlElement = do
+    (name, attrs, baliseIsClose) <- parseXmlStartTag
+    if baliseIsClose
+        then return $ XmlElement name attrs []
+        else do
             children <- parseMany parseXmlContent
             _ <- string "</"
-            _ <- parseIdentifier 
+            _ <- parseIdentifier
             _ <- charr '>'
             return $ XmlElement name attrs children
 
