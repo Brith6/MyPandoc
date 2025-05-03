@@ -15,7 +15,8 @@ import Document
 import ParseXml
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)
-
+import JsonReader
+import DoctoJson
 mySplitOn :: Char -> String -> [String]
 mySplitOn _ [] = [""]
 mySplitOn delimiter (x:xs)
@@ -52,30 +53,33 @@ determineFormat content
   where
     trimmed = dropWhile isSpace content
 
-parseDocument:: String -> String -> Maybe Doc
+parseDocument:: String -> String -> IO(Maybe Doc)
 parseDocument ifile iformat = case iformat of
-        "xml" -> parseXmlToDoc ifile
-        -- "json" -> Just $ parseJson ifile
+        "xml" ->return(parseXmlToDoc ifile)
+        "json" -> return (readMyFile ifile)
         -- "markdown" -> Just $ parseMarkdown ifile
         "" -> parseDocument ifile (determineFormat ifile)
-        _ -> Nothing
+        _ -> return Nothing
 
 applyFormat :: Maybe Doc -> String -> String -> IO ()
 applyFormat doc oformat ofile = case oformat of
         "xml" -> applyXml doc ofile
-        "json" -> putStrLn "JSON format selected"
+        "json" -> applyJson doc ofile
         "markdown" -> putStrLn "Markdown format selected"
         _ -> putStrLn "Unknown format"
 
+cutmyPandoc :: String-> String -> String -> String -> IO ()
+cutmyPandoc content iformat oformat ofile = do
+                maybeDoc <- parseDocument content iformat  -- On passe le contenu au lieu du nom de fichier
+                case maybeDoc of
+                    (Just d) -> applyFormat (Just d) oformat ofile
+                    Nothing -> putStrLn "Error: Invalid document format" >> 
+                              exitWith (ExitFailure 84)
 myPandoc :: Conf -> IO ()
 myPandoc conf = case conf of
     (Conf (Just ifile) (Just oformat) (Just ofile) (Just iformat)) -> do
         validIFile <- isValidFile ifile
         case validIFile of
             Left _ -> usage >> exitWith (ExitFailure 84)
-            Right content -> case parseDocument content iformat of
-                    Just d -> applyFormat (Just d) oformat ofile
-                    Nothing -> putStrLn "Error: Invalid document format" >>
-                        exitWith (ExitFailure 84)
+            Right content -> (cutmyPandoc content iformat oformat ofile)
     _ -> usage >> exitWith (ExitFailure 84)
-
