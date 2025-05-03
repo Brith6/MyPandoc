@@ -51,9 +51,9 @@ parseXmlText (XmlElement "italic" _ [XmlText val]) =
 parseXmlText (XmlElement "code" _ [XmlText val]) =
     Text Nothing False False True (Just val) Nothing
 parseXmlText (XmlElement "link" attrs [XmlText val]) =
-    Text Nothing False False False (Just val) (lookup "url" attrs)
+    Text (Just "link") False False False (Just val) (lookup "url" attrs)
 parseXmlText (XmlElement "image" attrs _) =
-    Text Nothing False False False Nothing (lookup "url" attrs)
+    Text (Just "image") False False False Nothing (lookup "url" attrs)
 parseXmlText (XmlText val) = Text Nothing False False False (Just val) Nothing
 parseXmlText _ = Text Nothing False False False Nothing Nothing
 
