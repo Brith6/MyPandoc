@@ -50,7 +50,7 @@ restCase :: Doc -> [JsonValue] -> Maybe [JsonValue] -> Maybe Doc
 restCase my_doc [] _ = Just my_doc
 restCase my_doc my_array res = case my_array of
     ((JsonObject (("codeblock",(JsonArray rsec)):[])):resObj) -> (cvJbdy
-     (my_doc {body = (body my_doc) ++ [(Bycodeblock (pJcodeB 
+     (my_doc {body =(body my_doc) ++ [(Bycodeblock (pJcodeB 
                         rsec))]}) res)
     ((JsonObject ((lol,JsonString m):[])):resObj) -> cvJbdy (my_doc 
             {body = (body my_doc) ++ [(Bdypara (cvJA ((JsonObject

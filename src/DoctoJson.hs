@@ -80,13 +80,11 @@ paragraph_writer (Bdypara texts) num =
   intercalate "," (map (\t -> text_writer t num) texts) ++
    "\n" ++ tab_giver (num) ++ "]"
 
-retrieve_text :: [BodyElem] -> Text
-retrieve_text ((Bdypara (x:xs)):res) = x
-
 codeblock_writer :: [BodyElem] -> Int -> String
 codeblock_writer lines num =
-  tab_giver num ++ "{\n" ++ tab_giver (num + 1) ++ "\"codeblock\": [" ++
-  (text_writer (retrieve_text lines) (num + 1))  ++ "\n" ++
+  tab_giver num ++ "{\n" ++ tab_giver (num + 1) ++ 
+  "\"codeblock\": [\n" ++ intercalate ",\n"
+  (map (\t -> paragraph_writer t (num+1)) lines)  ++ "\n" ++
   tab_giver (num + 1) ++ "]\n" ++ (tab_giver (num)) ++ "}"
 
 list_writer :: BodyElem -> Int -> String
