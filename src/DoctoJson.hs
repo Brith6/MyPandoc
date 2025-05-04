@@ -34,15 +34,16 @@ header_Writer (Header t a d) =
 s_object_adder :: String -> String -> String -> Int -> String
 s_object_adder "link" value url num = (tab_giver (num)) ++ "{\n" ++ (tab_giver
  (num + 1)) ++ "\"" ++ "link" ++ "\": " ++ "{\n"++
-    (object_adder "url" url (num + 1)) ++ ",\n" ++ (tab_giver (num + 1)) ++ 
-    "\"alt\": [\n" ++ (tab_giver(num +2)) ++ "\"" ++ value  ++ "\"" ++ "\n"
-    ++ (tab_giver(num +1))  ++ "]\n" ++ tab_giver(num) ++ "}"
+    (object_adder "url" url (num + 2)) ++ ",\n" ++ (tab_giver (num + 2)) ++ 
+    "\"content\": [\n" ++ (tab_giver(num +3)) ++ "\"" ++ value  ++ "\"" ++ "\n"
+    ++ (tab_giver(num +2))  ++ "]\n" ++ tab_giver(num + 1) ++ "}\n" ++
+    tab_giver(num) ++ "}"
 s_object_adder "image" value url num = (tab_giver (num)) ++ "{\n" ++ 
     (tab_giver (num + 1)) ++ "\"" ++ "image" ++ "\": " ++ "{\n"++
-    (object_adder "url" url (num + 1)) ++ ",\n" ++ (tab_giver
-    (num + 1)) ++ "\"alt\": [\n" ++ (tab_giver(num +2)) ++ "\""
-    ++ value  ++ "\"" ++ "\n" ++ (tab_giver(num +1))  ++ "]\n" 
-    ++ tab_giver(num) ++ "}"
+    (object_adder "url" url (num + 2)) ++ ",\n" ++ (tab_giver
+    (num + 2)) ++ "\"alt\": [\n" ++ (tab_giver(num +3)) ++ "\""
+    ++ value  ++ "\"" ++ "\n" ++ (tab_giver(num +2))  ++ "]\n" 
+    ++ tab_giver(num + 1) ++ "}\n" ++ tab_giver(num) ++ "}"
 
 openner :: Int -> String
 openner num = "\n" ++ (tab_giver (num)) ++ "{\n"
@@ -69,15 +70,13 @@ text_writer (Text Nothing True False False (Just(value)) Nothing) num = ((
     openner(num + 1)) ++(object_adder "bold" value (num + 2)) 
     ++ (ender(num + 1)))
 text_writer (Text (Just ("link")) False False False (Just(v)) (Just(u))) num = 
-    ((tab_giver (num+1))  
-    ++ "\n") ++(s_object_adder "link" v u (num + 1))
+    "\n" ++(s_object_adder "link" v u (num + 1))
 text_writer (Text (Just ("image")) False False False (Just(v)) (Just(u))) num =
-    ((tab_giver (num+1))  
-    ++ "\n") ++(s_object_adder "image" v u (num + 1))
+    "\n" ++(s_object_adder "image" v u (num + 1))
 text_writer _ _ = ""
 paragraph_writer :: BodyElem -> Int -> String
 paragraph_writer (Bdypara texts) num =
-  tab_giver (num) ++ "[" ++ tab_giver (num + 2) ++ 
+  tab_giver (num) ++ "[" ++ 
   intercalate "," (map (\t -> text_writer t num) texts) ++
    "\n" ++ tab_giver (num) ++ "]"
 
@@ -87,8 +86,7 @@ retrieve_text ((Bdypara (x:xs)):res) = x
 codeblock_writer :: [BodyElem] -> Int -> String
 codeblock_writer lines num =
   tab_giver num ++ "{\n" ++ tab_giver (num + 1) ++ "\"codeblock\": [" ++
-   tab_giver (num + 2)
-   ++ (text_writer (retrieve_text lines) (num + 1))  ++ "\n" ++
+  (text_writer (retrieve_text lines) (num + 1))  ++ "\n" ++
   tab_giver (num + 1) ++ "]\n" ++ (tab_giver (num)) ++ "}"
 
 list_writer :: BodyElem -> Int -> String
