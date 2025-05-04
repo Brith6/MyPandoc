@@ -46,17 +46,25 @@ convertJsonDoc my_doc (Just ((JsonObject (x:xs)), _)) = case (x:xs) of
                     author = stringgiver(lookup "author" (b:bs)),
                     date = stringgiver(lookup "date" (b:bs))} [])
 
+restCase :: Doc -> [JsonValue] -> Maybe [JsonValue] -> Maybe Doc
+restCase my_doc [] _ = Just my_doc
+restCase my_doc my_array res = case my_array of
+    ((JsonObject (("codeblock",(JsonArray rsec)):[])):resObj) -> (cvJbdy
+     (my_doc {body = (body my_doc) ++ [(Bycodeblock (pJcodeB 
+                        rsec))]}) res)
+    ((JsonObject ((lol,JsonString m):[])):resObj) -> cvJbdy (my_doc 
+            {body = (body my_doc) ++ [(Bdypara (cvJA ((JsonObject
+                ((lol,JsonString m):[])):resObj)))]}) res
+    _ ->(cvJbdy my_doc res)
+    
+
 cvJbdy :: Doc -> Maybe [JsonValue] -> Maybe Doc
 cvJbdy my_doc (Just []) = Just my_doc
 cvJbdy my_doc (Just ((JsonArray a_m):res)) =  case a_m of
             ((JsonString member):xs) -> cvJbdy (my_doc {body =
                 (body my_doc) ++ [(Bdypara (cvJA
                     ((JsonString member):xs)))]}) (Just res)
-            ((JsonObject (("codeblock",(JsonArray
-                rsec)):[])):resObj) -> cvJbdy (my_doc {body =
-                    (body my_doc) ++ [(Bycodeblock (pJcodeB 
-                        rsec))]}) (Just res)
-            _ -> cvJbdy my_doc (Just res)
+            _ -> (restCase my_doc a_m (Just res))
 cvJbdy my_doc (Just ((JsonObject (("codeblock",(JsonArray 
     rsec)):resObj)):res)) = cvJbdy (my_doc {body = 
         (body my_doc) ++ [(Bycodeblock (pJcodeB rsec))]}) (Just res)
