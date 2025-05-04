@@ -7,11 +7,8 @@
 
 module TranscriptXml where
 import Document
-import Parser
-import ParseXml
 import Data.Maybe (fromMaybe)
 import System.Exit
-import System.IO (readFile, stdout, hPutStr)
 
 -- Spaces for indentation
 indent :: Int -> String
@@ -24,8 +21,7 @@ formatDocumentXml doc = unlines
     , indent 4 ++ formatHeaderXml (header doc)
     , indent 4 ++ "<body>\n" ++ formatBodyXml 8 (body doc)
         ++ indent 4 ++ "</body>"
-    , "</document>"
-    ]
+    ] ++ "</document>"
 
 -- Format the header
 formatHeaderXml :: Header -> String
@@ -65,9 +61,9 @@ formatSectionXml n (Section title content) =
 
 -- Format text values
 formatTextXml :: Text -> String
-formatTextXml (Text _ _ _ _ (Just txt) (Just url)) =
+formatTextXml (Text (Just "link") _ _ _ (Just txt) (Just url)) =
     "<link url=\"" ++ url ++ "\">" ++ txt ++ "</link>"
-formatTextXml (Text _ _ _ _ (Just txt) (Just url)) =
+formatTextXml (Text (Just "image") _ _ _ (Just txt) (Just url)) =
     "<image url=\"" ++ url ++ "\">" ++ txt ++ "</image>"
 formatTextXml (Text _ True _ _ (Just txt) _) =
     "<bold>" ++ txt ++ "</bold>"
@@ -85,21 +81,3 @@ applyXml Nothing _ =
 applyXml (Just doc) file =
     let xmlOutput = formatDocumentXml doc
     in if file /= "" then writeFile file xmlOutput else putStr xmlOutput
-
--- main :: IO ()
--- main = do
---     args <- getArgs
---     if length args < 2
---        then do
---            putStrLn "Error: Insufficient arguments provided. Usage: program <inputFile> <outputFile>"
---            exitWith (ExitFailure 84)
---        else do
---          let inputFile  = head args
---          let outputFile = args !! 1
---          content <- readFile inputFile
---          case parseXmlToDoc content of
---              Nothing  -> putStrLn "Parsing failed"
---              Just doc -> do
---                  let xmlOutput = formatDocumentXml doc
---                  writeFile outputFile xmlOutput
---                  putStrLn "Parsing and writing completed successfully!"

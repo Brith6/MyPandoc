@@ -17,6 +17,8 @@ import Data.Char (isSpace)
 import Data.List (isPrefixOf)
 import JsonReader
 import DoctoJson
+import TranscriptMd
+
 mySplitOn :: Char -> String -> [String]
 mySplitOn _ [] = [""]
 mySplitOn delimiter (x:xs)
@@ -57,7 +59,7 @@ parseDocument:: String -> String -> IO(Maybe Doc)
 parseDocument ifile iformat = case iformat of
         "xml" ->return(parseXmlToDoc ifile)
         "json" -> return (readMyFile ifile)
-        -- "markdown" -> Just $ parseMarkdown ifile
+        "markdown" -> return (Just defaultDoc)
         "" -> parseDocument ifile (determineFormat ifile)
         _ -> return Nothing
 
@@ -65,8 +67,8 @@ applyFormat :: Maybe Doc -> String -> String -> IO ()
 applyFormat doc oformat ofile = case oformat of
         "xml" -> applyXml doc ofile
         "json" -> applyJson doc ofile
-        "markdown" -> putStrLn "Markdown format selected"
-        _ -> putStrLn "Unknown format"
+        "markdown" -> applyMd doc ofile
+        _ -> putStrLn "Unknown format" >> exitWith (ExitFailure 84)
 
 cutmyPandoc :: String-> String -> String -> String -> IO ()
 cutmyPandoc content iformat oformat ofile = do
