@@ -24,17 +24,12 @@ formatDocumentXml doc = unlines
     ] ++ "</document>"
 
 -- Format the header
-xmlHeaderAttr :: Maybe String -> String
-xmlHeaderAttr (Just s) = s
-xmlHeaderAttr Nothing  = ""
-
 formatHeaderXml :: Header -> String
 formatHeaderXml (Header title auth date) =
-    "<header title=\"" ++ xmlHeaderAttr title ++ "\">" ++ "\n" ++
-    indent 8 ++ "<author>" ++ xmlHeaderAttr auth ++ "</author>" ++ "\n" ++
-    indent 8 ++ "<date>" ++ xmlHeaderAttr date ++ "</date>" ++ "\n" ++
+    "<header title=\"" ++ fromMaybe "" title ++ "\">" ++ "\n" ++
+    indent 8 ++ "<author>" ++ fromMaybe "" auth ++ "</author>" ++ "\n"++
+    indent 8 ++ "<date>" ++ fromMaybe "" date ++ "</date>" ++ "\n" ++
     indent 4 ++ "</header>"
-
 
 -- Process a list of body elements
 formatBodyXml :: Int -> [BodyElem] -> String

@@ -7,20 +7,16 @@
 
 module TranscriptMd where
 import Document
+import Data.Maybe (fromMaybe)
 import System.Exit
-
-
-mdHeaderAttr :: String -> Maybe String -> String
-mdHeaderAttr key (Just value) = key ++ ": " ++ value
-mdHeaderAttr key Nothing      = key ++ ":"
 
 -- Convert document to Markdown
 formatDocumentMd :: Doc -> String
 formatDocumentMd doc = unlines $
       [ "---"
-      , mdHeaderAttr "title" title
-      , mdHeaderAttr "author" auth
-      , mdHeaderAttr "date" date
+      , "title: " ++ fromMaybe "" title
+      , "author: " ++ fromMaybe "" auth
+      , "date: " ++ fromMaybe "" date
       , "---"
       , ""
       ] ++ [ formatBodyMd 1 (body doc) ]
