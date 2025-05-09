@@ -5,20 +5,47 @@
 -- pandoc
 -}
 
+{-|
+
+Module      : Parser
+Description : Un parseur combinatoire simple pour JSON et XML
+Auteurs  : julcinia.oke@epitech.eu, bill.adjagboni@epitech.eu
+
+Ce module définit un mini-framework de parsing basé sur le type 'Parser', avec
+des implémentations concrètes pour la lecture de valeurs JSON et XML.
+-}
+
 module Parser where
 import Control.Applicative
 import Data.List (intercalate)
 import Text.Read
 
+--------------------------------------------------------------------------------
+-- | Type de parseur générique.
+--
+-- Un parseur prend une 'String' en entrée et retourne potentiellement
+-- une valeur de type @a@ accompagnée du reste de l'entrée non consommée.
+
 data Parser a = Parser { 
     runParser :: String -> Maybe (a, String)
 }
+
+
+--------------------------------------------------------------------------------
+-- * Instances de typeclass pour `Parser`
+
+-- | 'fmap' permet d'appliquer une fonction à la sortie d’un parseur.
 
 instance Functor Parser where
     fmap f (Parser p) = Parser $ \input ->
         case p input of
             Just (x, rest) -> Just (f x, rest)
             Nothing -> Nothing
+
+
+
+-- | Permet la composition séquentielle de parseurs.
+
 
 instance Applicative Parser where
     pure x = Parser $ \input -> Just (x, input)
@@ -30,6 +57,9 @@ instance Applicative Parser where
                 Nothing -> Nothing
             Nothing -> Nothing
 
+
+-- | Permet la composition séquentielle de parseurs.
+
 instance Alternative Parser where
     empty = Parser $ const Nothing
 
@@ -38,6 +68,9 @@ instance Alternative Parser where
             Just res -> Just res
             Nothing  -> p2 input
 
+
+-- | Permet d'enchaîner les parseurs de façon monadique.
+
 instance Monad Parser where
     return = pure
 
@@ -45,6 +78,36 @@ instance Monad Parser where
         case p input of
             Just (x, rest) -> runParser (f x) rest
             Nothing -> Nothing
+
+
+
+
+-- | Parse un caractère parmi ceux spécifiés.
+--parseAnyChar :: String -> Parser Char
+
+-- | Essaye un parseur, puis un autre si le premier échoue.
+--parseOr :: Parser a -> Parser a -> Parser a
+
+-- | Applique deux parseurs séquentiellement et retourne un couple.
+--parseAnd :: Parser a -> Parser b -> Parser (a, b)
+
+-- | Applique deux parseurs et combine leurs résultats avec une fonction.
+--parseAndWith :: (a -> b -> c) -> Parser a -> Parser b -> Parser c
+
+-- | Applique un parseur autant de fois que possible (zéro ou plus).
+--parseMany :: Parser a -> Parser [a]
+
+-- | Applique un parseur une ou plusieurs fois.
+--parseSome :: Parser a -> Parser [a]
+
+--------------------------------------------------------------------------------
+-- * Parseurs numériques
+
+-- | Parse un entier non signé.
+--parseUInt :: Parser Int
+
+-- | Parse un entier signé.
+--parseInt :: Parser Int
 
 charr :: Char -> Parser Char
 charr c = Parser $ \input ->
@@ -106,6 +169,13 @@ parseInt = do
 
 -- step3
 
+
+
+
+--------------------------------------------------------------------------------
+-- * Type JSON
+
+-- | Représentation d’une valeur JSON.
 data JsonValue
     = JsonNull
     | JsonBool Bool
@@ -114,6 +184,60 @@ data JsonValue
     | JsonArray [JsonValue]
     | JsonObject [(String, JsonValue)]
     deriving (Show, Eq)
+
+-- | Parse une valeur JSON générique.
+--parseJsonValue :: Parser JsonValue
+
+-- | Parse la valeur JSON @null@.
+--parseJsonNull :: Parser JsonValue
+
+-- | Parse un booléen JSON : @true@ ou @false@.
+--parseJsonBool :: Parser JsonValue
+
+-- | Parse un nombre JSON.
+--parseJsonNumber :: Parser JsonValue
+
+-- | Parse une chaîne JSON entourée de guillemets.
+--parseJsonString :: Parser JsonValue
+
+-- | Parse un tableau JSON.
+--parseJsonArray :: Parser JsonValue
+
+-- | Parse une liste de valeurs JSON dans un tableau.
+--parseArr :: Parser [JsonValue]
+
+-- | Parse un objet JSON.
+--parseJsonObject :: Parser JsonValue
+
+-- | Parse une liste de paires clé/valeur pour un objet JSON.
+--parseVal :: Parser [(String, JsonValue)]
+
+-- | Parse une paire clé/valeur d'un objet JSON.
+--parsePair :: Parser (String, JsonValue)
+
+-- | Affiche une valeur JSON sous forme de chaîne valide JSON.
+--printJson :: JsonValue -> String
+
+--------------------------------------------------------------------------------
+-- * Parseurs utilitaires
+
+-- | Parse une chaîne littérale.
+--string :: String -> Parser String
+
+-- | Parse un ou plusieurs caractères d'espacement.
+--space :: Parser String
+
+-- | Parse un chiffre.
+--parseDigit :: Parser Char
+
+-- | Parse une séquence de chiffres.
+--parseUnsignedInt :: Parser String
+
+-- | Parse un signe optionnel.
+--parseSign :: Parser (Maybe Char)
+
+-- | Parse une partie décimale optionnelle.
+--parseDecimal :: Parser (Maybe String)
 
 parseJsonValue :: Parser JsonValue
 parseJsonValue = 
@@ -237,21 +361,39 @@ printJson (JsonObject ax) = "{" ++ intercalate "," (map printPair ax) ++ "}"
 
 -- Paser Xml
 
+
+
+--------------------------------------------------------------------------------
+-- * XML
+
+-- | Représente un nœud XML.
+
+
 data Xml
     = XmlElement String [(String, String)] [Xml]  -- nom, attributs, contenu
     | XmlText String
     deriving (Show, Eq)
+
+
+-- | Parse une chaîne tant qu'une condition est vraie.
 
 parseWhile :: (Char -> Bool) -> Parser String
 parseWhile cond = Parser $ \input ->
     let (token, rest) = span cond input
     in Just (token, rest)
 
+
+-- | Parse un identifiant XML (nom de balise ou attribut).
+
 parseIdentifier :: Parser String
 parseIdentifier = (:) <$> parseAnyChar (['a'..'z'] ++ ['A'..'Z'])
     <*> parseMany (parseAnyChar identChars)
   where
     identChars = ['a'..'z'] ++ ['A'..'Z'] ++ ['0'..'9'] ++ "-_:."
+
+
+
+-- | Parse du texte brut XML (non-balise).
 
 parseText :: Parser Xml
 parseText = Parser $ \input ->
@@ -261,6 +403,8 @@ parseText = Parser $ \input ->
                 then Nothing
                 else Just (XmlText txt, rest)
         Nothing -> Nothing
+
+-- | Parse une paire attribut/valeur.
 
 parseAttr :: Parser (String, String)
 parseAttr = do
@@ -274,8 +418,14 @@ parseAttr = do
     _ <- charr '"'
     return (key, val)
 
+
+-- | Parse plusieurs attributs XML.
+
 parseAttrs :: Parser [(String, String)]
 parseAttrs = parseMany parseAttr
+
+
+-- | Parse une balise ouvrante avec attributs.
 
 parseXmlStartTag :: Parser (String, [(String, String)], Bool)
 parseXmlStartTag = do
@@ -285,6 +435,8 @@ parseXmlStartTag = do
     _ <- space
     baliseIsClose <- (string "/>" *> pure True) <|> (charr '>' *> pure False)
     return (name, attrs, baliseIsClose)
+
+-- | Parse un élément XML complet.
 
 parseXmlElement :: Parser Xml
 parseXmlElement = do
@@ -298,8 +450,13 @@ parseXmlElement = do
             _ <- charr '>'
             return $ XmlElement name attrs children
 
+
+-- | Parse le contenu interne d’un élément XML (texte ou enfants).
+
 parseXmlContent :: Parser Xml
 parseXmlContent = parseXmlElement <|> parseText
+
+-- | Point d’entrée pour parser un document XML.
 
 parseXml :: Parser Xml
 parseXml = space *> parseXmlElement <* space
